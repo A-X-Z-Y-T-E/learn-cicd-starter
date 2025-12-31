@@ -44,3 +44,9 @@ jobs:
           test -z "$UNFORMATTED"
           # Also run go fmt on all packages
           go fmt ./...
+      
+      - name: Install Staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: Run Staticcheck
+        run: staticcheck ./...

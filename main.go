@@ -21,6 +21,9 @@ type apiConfig struct {
 	DB *database.Queries
 }
 
+func hell() {
+	
+}
 //go:embed static/*
 var staticFiles embed.FS
 
