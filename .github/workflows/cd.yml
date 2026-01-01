@@ -32,7 +32,7 @@ jobs:
       - name: Build Application
         run: ./scripts/buildprod.sh
 
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/249324394764/locations/global/workloadIdentityPools/github-pool/providers/github-provider
@@ -40,20 +40,28 @@ jobs:
 
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: notely-483004
 
-      - name: Build & push image (Cloud Build)
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build & push Docker image
         run: |
           IMAGE_TAG=${GITHUB_SHA::7}
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
-          gcloud builds submit \
-            --tag $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/$IMAGE:$IMAGE_TAG \
-            .
+          docker build \
+            -t us-central1-docker.pkg.dev/notely-483004/notely-ar-repo/notely:$IMAGE_TAG .
+
+          docker push \
+            us-central1-docker.pkg.dev/notely-483004/notely-ar-repo/notely:$IMAGE_TAG
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy $SERVICE \
-            --image $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/$IMAGE:$IMAGE_TAG \
-            --region $REGION \
+          gcloud run deploy notely \
+            --image us-central1-docker.pkg.dev/notely-483004/notely-ar-repo/notely:$IMAGE_TAG \
+            --region us-central1 \
             --platform managed \
             --allow-unauthenticated
