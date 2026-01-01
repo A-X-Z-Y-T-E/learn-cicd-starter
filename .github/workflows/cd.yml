@@ -4,10 +4,21 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+  id-token: write   # REQUIRED for Workload Identity Federation
+
 jobs:
-  Deploy:
+  deploy:
     name: Deploy
     runs-on: ubuntu-latest
+
+    env:
+      PROJECT_ID: notely-483004
+      REGION: us-central1
+      REPO: notely-ar-repo
+      IMAGE: notely
+      SERVICE: notely
 
     steps:
       - name: Check out code
@@ -21,7 +32,28 @@ jobs:
       - name: Build Application
         run: ./scripts/buildprod.sh
 
-    #   - name: Deploy Application
-    #     run: |
-    #       echo "Deploying application..."
-    #       # Add your deployment commands here
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/249324394764/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+          service_account: cloud-run-deployer@notely-483004.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build & push image (Cloud Build)
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::7}
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+          gcloud builds submit \
+            --tag $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/$IMAGE:$IMAGE_TAG \
+            .
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy $SERVICE \
+            --image $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/$IMAGE:$IMAGE_TAG \
+            --region $REGION \
+            --platform managed \
+            --allow-unauthenticated
