@@ -38,9 +38,8 @@ jobs:
           workload_identity_provider: projects/249324394764/locations/global/workloadIdentityPools/github-pool/providers/github-provider
           service_account: cloud-run-deployer@notely-483004.iam.gserviceaccount.com
 
-      - name: Build and deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: notely
-          region: us-central1
-          source: .
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Trigger Cloud Build
+        run: gcloud builds submit --config=cloudbuild.yaml --project=notely-483004
